@@ -12,7 +12,6 @@ def load_lines():
                 lines[filename.replace(".txt", "")] = stations
     return lines
 
-
 def build_graph(lines):
     graph = defaultdict(list)
     station_lines = defaultdict(list)
@@ -77,19 +76,132 @@ def print_route(route):
         else:
             print(f"  → {station}")
 
-    print("Arrived 🎉")
+    print("Arrived 🎉\n\n")
+
+def get_station_to_lines(lines):
+    station_to_lines = defaultdict(set)
+    for line, stations in lines.items():
+        for station in stations:
+            station_to_lines[station].add(line)
+    return station_to_lines
+
+def get_metro_info(line_name, lines):
+    if line_name not in lines:
+        return None
+
+    stations = lines[line_name]
+    station_to_lines = get_station_to_lines(lines)
+
+    transfers = {}
+    for station in stations:
+        connected_lines = station_to_lines[station] - {line_name}
+        if connected_lines:
+            transfers[station] = list(connected_lines)
+
+    info = {
+        "line": line_name,
+        "station_count": len(stations),
+        "start_station": stations[0],
+        "end_station": stations[-1],
+        "stations": stations,
+        "transfers": transfers
+    }
+
+    return info
+
+def print_metro_info(info):
+    print(f"\n🚇 {info['line']}")
+    print(f"Stations: {info['station_count']}")
+    print(f"From {info['start_station']} → {info['end_station']}")
+
+    if info["transfers"]:
+        print("\n🔁 Transfer stations:")
+        for station, lines in info["transfers"].items():
+            print(f"  • {station} → {', '.join(lines)}")
+    else:
+        print("\nNo transfer stations")
+
+    print("\n📍 Station list:")
+    for s in info["stations"]:
+        print(f"  - {s}")   
+
+def get_station_info(station_name, lines):
+    station_name = station_name.strip()
+    info = {
+        "station": station_name,
+        "lines": [],
+        "is_transfer": False,
+        "connections": {}
+    }
+
+    for line, stations in lines.items():
+        if station_name in stations:
+            idx = stations.index(station_name)
+            info["lines"].append(line)
+
+            prev_station = stations[idx - 1] if idx > 0 else None
+            next_station = stations[idx + 1] if idx < len(stations) - 1 else None
+
+            info["connections"][line] = {
+                "previous": prev_station,
+                "next": next_station
+            }
+
+    info["is_transfer"] = len(info["lines"]) > 1
+    return info if info["lines"] else None
+
+def print_station_info(info):
+    print(f"\n🚉 Station: {info['station']}")
+    print(f"Lines: {', '.join(info['lines'])}")
+
+    if info["is_transfer"]:
+        print("Transfer station: YES 🔁")
+    else:
+        print("Transfer station: NO")
+
+    print("\nConnections:")
+    for line, conn in info["connections"].items():
+        prev_s = conn["previous"] or "End of line"
+        next_s = conn["next"] or "End of line"
+        print(f"  {line}: {prev_s} ← {info['station']} → {next_s}")
+
 
 if __name__ == "__main__":
+    lines = load_lines()
+
     while True:
-        lines = load_lines()
-        graph = build_graph(lines)
+        answer = input("What you want? \n 1 - Search lines \n 2 - Search Station\n 3 - Pathing\n\n")
+        if answer == '1':
+            line_name = input("Enter metro line name: ")
+            info = get_metro_info(line_name, lines)
 
-        start = input("Start station: ")
-        end = input("End station: ")
+            if info:
+                print_metro_info(info)
+            else:
+                print("Line not found")
 
-        route = find_route(start, end, lines, graph)
+        elif answer == '2':
+            station = input("Enter station name: ")
+            info = get_station_info(station, lines)
 
-        if route:
-            print_route(route)
+            if info:
+                print_station_info(info)
+                print("\n\n")
+            else:
+                print("Station not found")
+                print("\n\n")
+
+        elif answer == '3':
+            graph = build_graph(lines)
+
+            start = input("Start station: ")
+            end = input("End station: ")
+
+            route = find_route(start, end, lines, graph)
+
+            if route:
+                print_route(route)
+            else:
+                print("No route found")
         else:
-            print("No route found")
+            continue
